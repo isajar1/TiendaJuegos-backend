@@ -1,0 +1,2 @@
+-- Run this script against the tienda_juegos database.
+-- MySQL 8.4+ is required.
