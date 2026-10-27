@@ -12,6 +12,11 @@ spring:
       ddl-auto: update
     open-in-view: false
 
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-this-development-secret-key-to-a-long-random-value-2026}
+    expiration-ms: ${JWT_EXPIRATION_MS:3600000}
+
 server:
   port: ${SERVER_PORT:8080}
 
