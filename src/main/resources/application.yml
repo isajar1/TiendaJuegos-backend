@@ -1,6 +1,7 @@
 spring:
   config:
-    import: optional:file:.env[.properties]
+      # Funciona tanto al abrir "Backend" como al ejecutar desde la raíz del proyecto en VS Code.
+      import: optional:file:./.env[.properties],optional:file:./Backend/.env[.properties]
   application:
     name: tienda-juegos-api
   datasource:
