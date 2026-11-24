@@ -49,4 +49,7 @@ public class Usuario {
     public String getCorreo() { return correo; }
     public String getContrasenaHash() { return contrasenaHash; }
     public Role getRol() { return rol; }
+
+    public void setNombre(String nombre) { this.nombre = nombre; }
+    public void setContrasenaHash(String contrasenaHash) { this.contrasenaHash = contrasenaHash; }
 }
