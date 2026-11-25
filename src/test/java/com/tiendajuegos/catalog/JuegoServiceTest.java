@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,9 +23,11 @@ import com.tiendajuegos.domain.Juego;
 import com.tiendajuegos.domain.Resena;
 import com.tiendajuegos.repository.CategoriaRepository;
 import com.tiendajuegos.repository.ClaveDigitalRepository;
+import com.tiendajuegos.repository.ClaveDigitalRepository.ConteoPorJuego;
 import com.tiendajuegos.repository.JuegoRepository;
 import com.tiendajuegos.repository.PlataformaRepository;
 import com.tiendajuegos.repository.ResenaRepository;
+import com.tiendajuegos.repository.ResenaRepository.ResumenPorJuego;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -62,12 +65,18 @@ class JuegoServiceTest {
     void listarFiltraInactivosYAplicaFiltros() {
         Juego juego = TestFixtures.juego(1L, "FIFA 26", new BigDecimal("59.90"));
         Juego otro = TestFixtures.juego(2L, "Otro juego", new BigDecimal("10.00"));
-        when(juegoRepository.findAllByOrderByIdAsc()).thenReturn(List.of(juego, TestFixtures.inactivo(3L, "Viejo", BigDecimal.ONE), otro));
-        when(claveRepository.countByJuegoIdAndEstado(1L, EstadoClave.disponible)).thenReturn(2L);
-        List<Resena> resenas = List.of(
-                TestFixtures.resena(1L, juego, TestFixtures.usuario(1L, "A", "a@mail.com", null), 4, "Bueno"),
-                TestFixtures.resena(2L, juego, TestFixtures.usuario(2L, "B", "b@mail.com", null), 5, "Excelente"));
-        when(resenaRepository.findByJuegoIdOrderByFechaDesc(1L)).thenReturn(resenas);
+        when(juegoRepository.findAllConRelaciones()).thenReturn(List.of(juego, TestFixtures.inactivo(3L, "Viejo", BigDecimal.ONE), otro));
+        when(claveRepository.contarPorEstado(EstadoClave.disponible))
+                .thenReturn(List.of(new ConteoPorJuego() {
+                    public Long getJuegoId() { return 1L; }
+                    public Long getTotal() { return 2L; }
+                }));
+        when(resenaRepository.resumenPorJuego())
+                .thenReturn(List.of(new ResumenPorJuego() {
+                    public Long getJuegoId() { return 1L; }
+                    public Long getTotal() { return 2L; }
+                    public Double getPromedio() { return 4.5; }
+                }));
 
         List<JuegoResponse> respuesta = service.listar("fifa", "Accion", "Steam", "Global");
 
@@ -84,11 +93,39 @@ class JuegoServiceTest {
 
     @Test
     void listarSinFiltrosDevuelveTodosLosActivos() {
-        when(juegoRepository.findAllByOrderByIdAsc())
+        when(juegoRepository.findAllConRelaciones())
                 .thenReturn(List.of(TestFixtures.juego(1L, "A", BigDecimal.TEN),
                         TestFixtures.juego(2L, "B", BigDecimal.TEN)));
 
         assertEquals(2, service.listar(null, null, null, null).size());
+    }
+
+    @Test
+    void listarUsaConsultasAgrupadasSinNPlusOne() {
+        when(juegoRepository.findAllConRelaciones()).thenReturn(List.of());
+        when(claveRepository.contarPorEstado(EstadoClave.disponible)).thenReturn(List.of());
+        when(resenaRepository.resumenPorJuego()).thenReturn(List.of());
+
+        service.listar(null, null, null, null);
+
+        verify(juegoRepository, times(1)).findAllConRelaciones();
+        verify(claveRepository, times(1)).contarPorEstado(EstadoClave.disponible);
+        verify(resenaRepository, times(1)).resumenPorJuego();
+        verify(claveRepository, never()).countByJuegoIdAndEstado(any(), any());
+        verify(resenaRepository, never()).findByJuegoIdOrderByFechaDesc(any());
+    }
+
+    @Test
+    void listarAceptaNombreOIdDeCategoriaYPlataforma() {
+        when(juegoRepository.findAllConRelaciones())
+                .thenReturn(List.of(TestFixtures.juego(1L, "FIFA 26", BigDecimal.TEN)));
+        when(categoriaRepository.findById(1L)).thenReturn(Optional.of(TestFixtures.categoria(1L, "Accion")));
+        when(plataformaRepository.findById(1L)).thenReturn(Optional.of(TestFixtures.plataforma(1L, "Steam")));
+        when(categoriaRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertEquals(1, service.listar(null, "accion", "steam", null).size());
+        assertEquals(1, service.listar(null, "1", "1", null).size());
+        assertEquals(0, service.listar(null, "99", null, null).size());
     }
 
     @Test

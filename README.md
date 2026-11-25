@@ -48,7 +48,8 @@ Se necesita Java 21, MySQL accesible y Maven Wrapper incluido. Desde esta carpet
 ### Estado verificado
 
 - `mvn -q clean verify`: **BUILD SUCCESS**.
-- **156 tests** (0 fallos, 0 errores, 0 omitidos).
-- JaCoCo: **84,30 % de líneas** (784/930), **73,21 % de ramas** (123/168).
+- **158 tests** (0 fallos, 0 errores, 0 omitidos).
+- JaCoCo: **84,76 % de líneas** (812/958), **74,44 % de ramas** (134/180).
+- El catálogo (`GET /api/juegos`) hace **3 consultas agrupadas** en lugar de 33 (antes ~6,5 s, ahora ~1,2–1,4 s). La latencia restante es del viaje de ida y vuelta a la BD remota en Aiven (~150–200 ms por consulta), no del motor MySQL. Ver `ESTADO_ENTREGA.md`.
 
 Las pruebas E2E requieren el backend y MySQL en ejecución; no se ejecutaron en el entorno donde se generó este estado.

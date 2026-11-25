@@ -17,11 +17,15 @@ import com.tiendajuegos.domain.Plataforma;
 import com.tiendajuegos.domain.Resena;
 import com.tiendajuegos.repository.CategoriaRepository;
 import com.tiendajuegos.repository.ClaveDigitalRepository;
+import com.tiendajuegos.repository.ClaveDigitalRepository.ConteoPorJuego;
 import com.tiendajuegos.repository.JuegoRepository;
 import com.tiendajuegos.repository.PlataformaRepository;
 import com.tiendajuegos.repository.ResenaRepository;
+import com.tiendajuegos.repository.ResenaRepository.ResumenPorJuego;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,13 +55,26 @@ public class JuegoService {
 
     @Transactional(readOnly = true)
     public List<JuegoResponse> listar(String q, String categoria, String plataforma, String region) {
-        return juegoRepository.findAllByOrderByIdAsc().stream()
+        String categoriaNombre = resolverCategoria(categoria);
+        String plataformaNombre = resolverPlataforma(plataforma);
+
+        // Tres consultas agrupadas para todo el catálogo, en lugar de cuatro por juego.
+        Map<Long, Long> clavesDisponibles = new HashMap<>();
+        for (ConteoPorJuego conteo : claveRepository.contarPorEstado(EstadoClave.disponible)) {
+            clavesDisponibles.put(conteo.getJuegoId(), conteo.getTotal());
+        }
+        Map<Long, double[]> resenas = new HashMap<>();
+        for (ResumenPorJuego resumen : resenaRepository.resumenPorJuego()) {
+            resenas.put(resumen.getJuegoId(), new double[]{resumen.getTotal(), resumen.getPromedio()});
+        }
+
+        return juegoRepository.findAllConRelaciones().stream()
                 .filter(Juego::isActivo)
                 .filter(juego -> matchesText(q, juego))
-                .filter(juego -> matchesName(categoria, juego.getCategoria().getNombre()))
-                .filter(juego -> matchesName(plataforma, juego.getPlataforma().getNombre()))
+                .filter(juego -> matchesName(categoriaNombre, juego.getCategoria().getNombre()))
+                .filter(juego -> matchesName(plataformaNombre, juego.getPlataforma().getNombre()))
                 .filter(juego -> matchesName(region, juego.getRegion()))
-                .map(this::toResponse)
+                .map(juego -> toResponse(juego, clavesDisponibles, resenas))
                 .toList();
     }
 
@@ -129,13 +146,22 @@ public class JuegoService {
     }
 
     private JuegoResponse toResponse(Juego juego) {
-        long disponibles = juego.getId() == null ? 0
-                : claveRepository.countByJuegoIdAndEstado(juego.getId(), EstadoClave.disponible);
-        List<Resena> resenas = juego.getId() == null ? List.of() : resenaRepository.findByJuegoIdOrderByFechaDesc(juego.getId());
-        double promedio = resenas.stream()
-                .mapToInt(Resena::getCalificacion)
-                .average()
-                .orElse(0.0);
+        Map<Long, Long> claves = new HashMap<>();
+        Map<Long, double[]> resenas = new HashMap<>();
+        if (juego.getId() != null) {
+            claves.put(juego.getId(),
+                    claveRepository.countByJuegoIdAndEstado(juego.getId(), EstadoClave.disponible));
+            List<Resena> lista = resenaRepository.findByJuegoIdOrderByFechaDesc(juego.getId());
+            double promedio = lista.stream().mapToInt(Resena::getCalificacion).average().orElse(0.0);
+            resenas.put(juego.getId(), new double[]{lista.size(), promedio});
+        }
+        return toResponse(juego, claves, resenas);
+    }
+
+    private JuegoResponse toResponse(Juego juego, Map<Long, Long> clavesDisponibles,
+                                     Map<Long, double[]> resenas) {
+        long id = juego.getId() == null ? -1L : juego.getId();
+        double[] datosResenas = resenas.getOrDefault(id, new double[]{0.0, 0.0});
         return new JuegoResponse(
                 juego.getId(),
                 juego.getTitulo(),
@@ -145,9 +171,9 @@ public class JuegoService {
                 juego.getPlataforma().getNombre(),
                 juego.getCategoria().getNombre(),
                 juego.isActivo(),
-                disponibles,
-                promedio,
-                resenas.size());
+                clavesDisponibles.getOrDefault(id, 0L),
+                datosResenas[1],
+                (long) datosResenas[0]);
     }
 
     private boolean matchesText(String q, Juego juego) {
@@ -160,6 +186,32 @@ public class JuegoService {
 
     private boolean matchesName(String filtro, String nombre) {
         return filtro == null || filtro.isBlank() || nombre.equalsIgnoreCase(filtro);
+    }
+
+    /** Acepta el nombre o el ID de la categoría, para que ningún cliente quede fuera del filtro. */
+    private String resolverCategoria(String filtro) {
+        if (filtro == null || filtro.isBlank()) return filtro;
+        String valor = filtro.trim();
+        try {
+            return categoriaRepository.findById(Long.parseLong(valor))
+                    .map(Categoria::getNombre)
+                    .orElse(valor);
+        } catch (NumberFormatException excepcion) {
+            return valor;
+        }
+    }
+
+    /** Acepta el nombre o el ID de la plataforma. */
+    private String resolverPlataforma(String filtro) {
+        if (filtro == null || filtro.isBlank()) return filtro;
+        String valor = filtro.trim();
+        try {
+            return plataformaRepository.findById(Long.parseLong(valor))
+                    .map(Plataforma::getNombre)
+                    .orElse(valor);
+        } catch (NumberFormatException excepcion) {
+            return valor;
+        }
     }
 
     private String normalizarRegion(String region) {

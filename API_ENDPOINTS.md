@@ -43,7 +43,7 @@ ReporteCliente = { usuarioId: number; nombre: string; ordenes: number; total: nu
 
 | Método | Ruta | Acceso | Body / query | Respuesta |
 |---|---|---|---|---|
-| GET | `/api/juegos` | público | `q`, `categoria`, `plataforma`, `region` (opcionales; `categoria` y `plataforma` son **nombres**, no IDs) | 200 `Juego[]` (solo activos) |
+| GET | `/api/juegos` | público | `q`, `categoria`, `plataforma`, `region` (opcionales; `categoria` y `plataforma` aceptan **nombre o ID**, con comparación de nombre insensible a mayúsculas) | 200 `Juego[]` (solo activos) |
 | GET | `/api/juegos/{id}` | público | — | 200 `Juego` / 404 |
 | POST | `/api/juegos` | admin | `{titulo, descripcion, precio, region, plataformaId, categoriaId}` | 201 `Juego` |
 | PUT | `/api/juegos/{id}` | admin | mismo body | 200 `Juego` / 404 |
