@@ -1,27 +1,54 @@
 # TiendaJuegos-backend
 
-REST API para el proyecto final de Ingeniería de Software.
+API REST para el proyecto final de Ingeniería de Software. Cubre las historias HU-01 a HU-22: autenticación, catálogo, carrito, cupones, pago simulado, entrega de claves, deseos, reseñas, historial, administración, reportes y auditoría.
 
-## Autenticacion
+## Contrato de la API
 
-Las rutas publicas de autenticacion son:
+La fuente de verdad es [`API_ENDPOINTS.md`](./API_ENDPOINTS.md). Incluye rutas, verbos, cuerpos, respuestas y reglas de negocio compartidas con el frontend.
 
-- `POST /api/auth/register`: recibe `nombre`, `correo` y `contrasena`. Crea usuarios con el rol `cliente` y almacena la contrasena usando BCrypt.
-- `POST /api/auth/login`: recibe `correo` y `contrasena`. Devuelve los datos basicos del usuario y un token JWT.
+### Rutas públicas
 
-Las rutas restantes requieren el encabezado `Authorization: Bearer <token>`.
+- `GET /api/health`
+- `POST /api/auth/register` y `POST /api/auth/login`
+- `GET /api/juegos`, `GET /api/juegos/{id}`, `GET /api/juegos/{id}/resenas`
+- `GET /api/categorias` y `GET /api/plataformas`
+
+El resto de rutas requiere `Authorization: Bearer <token>`; las de administración además exigen el rol `ADMIN`. Las respuestas de error usan `{"message":"..."}` con códigos 400/401/403/404/409/500.
+
+## Seguridad y cifrado
+
+- Contraseñas con BCrypt y sesiones JWT stateless (`app.jwt`).
+- Claves digitales cifradas con AES/GCM: IV aleatorio de 12 bytes y formato `base64(iv):base64(ciphertext)` (`app.crypto.secret` → SHA-256). La API solo devuelve claves descifradas al comprador o al administrador.
+- Auditoría de altas, cambios, pago, entrega y reportes en `log_auditoria`.
 
 ## Variables de entorno
 
-Usa `.env.example` como guia. Para ejecutar la aplicacion se requieren `DB_URL`, `DB_USER`, `DB_PASSWORD` y un `JWT_SECRET` de al menos 32 caracteres.
+| Variable | Uso |
+| --- | --- |
+| `DB_URL`, `DB_USER`, `DB_PASSWORD` | Conexión a MySQL (obligatorias). |
+| `JWT_SECRET` | Firma de tokens; usar 32+ caracteres en producción. |
+| `CRYPTO_SECRET` | Secreto para derivar la clave AES-256; **configurar en producción**. |
+| `JWT_EXPIRATION_MS`, `SERVER_PORT` | Opcionales, con valores por defecto. |
 
-## Ejecutar el backend
+## Base de datos
 
-El repositorio incluye Maven Wrapper para que cada integrante use la misma version de Maven sin instalarla globalmente. En PowerShell, desde esta carpeta, ejecuta:
+- `database/schema.sql`: esquema inicial (11 tablas).
+- `database/schema_v2.sql`: esquema completo usado por las 22 HU (12 entidades, incluyendo carrito, claves, órdenes, reseñas, deseos y auditoría).
+- `database/seed_admin.sql`: usuario administrador de desarrollo (`admin` / `admin123`, hash BCrypt).
+
+## Ejecutar y verificar
+
+Se necesita Java 21, MySQL accesible y Maven Wrapper incluido. Desde esta carpeta:
 
 ```powershell
-.\mvnw.cmd test
+.\mvnw.cmd clean verify
 .\mvnw.cmd spring-boot:run
 ```
 
-En el primer uso se descargan Maven y las dependencias del proyecto; despues se reutilizan localmente. Se necesita Java 21 y una conexion a internet para la descarga inicial.
+### Estado verificado
+
+- `mvn -q clean verify`: **BUILD SUCCESS**.
+- **156 tests** (0 fallos, 0 errores, 0 omitidos).
+- JaCoCo: **84,30 % de líneas** (784/930), **73,21 % de ramas** (123/168).
+
+Las pruebas E2E requieren el backend y MySQL en ejecución; no se ejecutaron en el entorno donde se generó este estado.
