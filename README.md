@@ -25,3 +25,13 @@ El repositorio incluye Maven Wrapper para que cada integrante use la misma versi
 ```
 
 En el primer uso se descargan Maven y las dependencias del proyecto; despues se reutilizan localmente. Se necesita Java 21 y una conexion a internet para la descarga inicial.
+
+---
+
+## Pruebas unitarias y cobertura (JaCoCo)
+
+La suite de pruebas unitarias valida servicios, seguridad, manejo de excepciones y lógica de negocio con JUnit 5 y Mockito, generando el reporte de cobertura con JaCoCo.
+
+- **Ejecutar pruebas y generar reporte:**
+  ```powershell
+  .\mvnw.cmd test jacoco:report
