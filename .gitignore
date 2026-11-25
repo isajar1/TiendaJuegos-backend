@@ -144,3 +144,12 @@ vite.config.ts.timestamp-*
 
 # Java and Maven build output
 target/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+.sonar/
