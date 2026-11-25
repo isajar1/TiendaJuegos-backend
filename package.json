@@ -1,0 +1,25 @@
+{
+  "name": "tiendajuegos-backend",
+  "version": "1.0.0",
+  "description": "REST API para el proyecto final de Ingeniería de Software.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+ "scripts": {
+    "tests:e2e": "playwright test",
+    "report": "playwright show-report"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/isajar1/TiendaJuegos-backend/issues"
+  },
+  "homepage": "https://github.com/isajar1/TiendaJuegos-backend#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^26.6.10"
+  }
+}
