@@ -181,4 +181,29 @@ class CheckoutServiceTest {
         verify(detalleRepository, never()).saveAll(anyList());
         verify(auditService).registrar(5L, "pago rechazado", "orden");
     }
+
+    @Test
+    void pagoAprobadoEntregaLaClaveHeredadaEsperada() {
+        // Regresión: las claves ya cargadas en la BD usan el formato antiguo.
+        CheckoutService servicioReal = new CheckoutService(carritoRepository, itemRepository, carritoService,
+                ordenRepository, detalleRepository, claveRepository,
+                new CryptoService("change-this-crypto-secret-with-a-long-random-value-2026"), auditService);
+        CarritoResponse unItem = new CarritoResponse(
+                List.of(new CarritoItemResponse(1L, "Juego A", new BigDecimal("100.00"))),
+                new BigDecimal("100.00"), BigDecimal.ZERO, new BigDecimal("100.00"), null);
+        when(carritoRepository.findByUsuarioId(5L)).thenReturn(Optional.of(carrito));
+        when(itemRepository.findByCarritoIdOrderByIdAsc(10L)).thenReturn(List.of(items.get(0)));
+        when(carritoService.resumen(carrito)).thenReturn(unItem);
+        when(claveRepository.countByJuegoIdAndEstado(1L, EstadoClave.disponible)).thenReturn(1L);
+        ClaveDigital clave = TestFixtures.clave(100L, juegoA,
+                "rugAJEWgFVqjBkViEkviey60VgOpaXjg9P1jzX2UwNAg95cddJrs/M8RgYm0REcQomy4LuQXJmQ=");
+        when(claveRepository.findFirstByJuegoIdAndEstadoOrderByIdAsc(1L, EstadoClave.disponible))
+                .thenReturn(Optional.of(clave));
+        when(ordenRepository.save(any())).thenReturn(TestFixtures.orden(99L, carrito.getUsuario(), null,
+                new BigDecimal("100.00"), EstadoPago.pagado));
+
+        var respuesta = servicioReal.pagar(5L, true);
+
+        assertEquals("SEED-KEY-0001-DEMO-ABCD-EFGH", respuesta.items().get(0).clave());
+    }
 }

@@ -19,6 +19,8 @@ El resto de rutas requiere `Authorization: Bearer <token>`; las de administraci�
 
 - Contraseñas con BCrypt y sesiones JWT stateless (`app.jwt`).
 - Claves digitales cifradas con AES/GCM: IV aleatorio de 12 bytes y formato `base64(iv):base64(ciphertext)` (`app.crypto.secret` → SHA-256). La API solo devuelve claves descifradas al comprador o al administrador.
+- Compatibilidad de lectura: las claves antiguas (un bloque base64 con `iv || ciphertext`, cifrado con el secreto JWT de desarrollo) se descifran con `app.crypto.legacy-secret`; toda clave nueva se escribe en el formato actual.
+- Alta de administradores: el registro público crea clientes; `POST /api/admin/usuarios/administradores` solo acepta una cuenta `admin` autenticada. El panel añade la pestaña «Usuarios» para dar de alta nuevos administradores.
 - Auditoría de altas, cambios, pago, entrega y reportes en `log_auditoria`.
 - La cuenta se puede eliminar desde el perfil (`DELETE /api/usuarios/mi-cuenta`). El borrado anonimiza al usuario (nombre «Usuario eliminado», correo `eliminado-{id}@invalid.local`, contraseña aleatoria y marca `eliminado`), limpia carrito y deseos, bloquea el inicio de sesión y conserva órdenes, reseñas y claves entregadas para no alterar reportes ni auditoría.
 
@@ -29,13 +31,14 @@ El resto de rutas requiere `Authorization: Bearer <token>`; las de administraci�
 | `DB_URL`, `DB_USER`, `DB_PASSWORD` | Conexión a MySQL (obligatorias). |
 | `JWT_SECRET` | Firma de tokens; usar 32+ caracteres en producción. |
 | `CRYPTO_SECRET` | Secreto para derivar la clave AES-256; **configurar en producción**. |
+| `CRYPTO_LEGACY_SECRET` | Secreto con el que se cifraron las claves antiguas; solo lectura. |
 | `JWT_EXPIRATION_MS`, `SERVER_PORT` | Opcionales, con valores por defecto. |
 
 ## Base de datos
 
 - `database/schema.sql`: esquema inicial (11 tablas).
 - `database/schema_v2.sql`: esquema completo usado por las 22 HU (12 entidades, incluyendo carrito, claves, órdenes, reseñas, deseos y auditoría).
-- `database/seed_admin.sql`: usuario administrador de desarrollo (`admin` / `admin123`, hash BCrypt).
+- `database/seed_admin.sql`: usuario administrador de desarrollo (`admin@tiendajuegos.com` / `admin123`, hash BCrypt). Es idempotente: si el correo ya existe, restablece nombre, contraseña y rol.
 
 ## Ejecutar y verificar
 
@@ -49,8 +52,9 @@ Se necesita Java 21, MySQL accesible y Maven Wrapper incluido. Desde esta carpet
 ### Estado verificado
 
 - `mvn -q clean verify`: **BUILD SUCCESS**.
-- **161 tests** (0 fallos, 0 errores, 0 omitidos).
-- JaCoCo: **84,64 % de líneas** (843/996), **74,46 % de ramas** (137/184).
+- **171 tests** en 30 clases (0 fallos, 0 errores, 0 omitidos).
+- JaCoCo: **85,02 % de líneas** (863/1015), **75,26 % de ramas** (146/194).
+- Comprobación real contra la MySQL de Aiven: login de `admin@tiendajuegos.com` con `admin123` → rol `admin`; `GET /api/ordenes` devolvió 10 órdenes y claves descifradas (p. ej. `SEED-KEY-0011-DEMO-ABCD-EFGH`).
 - El catálogo (`GET /api/juegos`) hace **3 consultas agrupadas** en lugar de 33 (antes ~6,5 s, ahora ~1,2–1,4 s). La latencia restante es del viaje de ida y vuelta a la BD remota en Aiven (~150–200 ms por consulta), no del motor MySQL. Ver `ESTADO_ENTREGA.md`.
 
 Las pruebas E2E requieren el backend y MySQL en ejecución; no se ejecutaron en el entorno donde se generó este estado.

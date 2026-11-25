@@ -9,7 +9,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.tiendajuegos.common.ApiException;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.Base64;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -73,5 +78,44 @@ class CryptoServiceTest {
     void unicodeKeysAreSupported() {
         String original = "CLAVE-Ñ-€-" + new String("áéíóú".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8);
         assertEquals(original, cryptoService.decrypt(cryptoService.encrypt(original)));
+    }
+
+    @Test
+    void decryptsLegacyKeyStoredInTheRealDatabase() {
+        // Valor tomado de claves_digitales antes del cambio: un solo bloque base64
+        // cifrado con el secreto JWT por defecto, no con el secreto de claves.
+        CryptoService servidor = new CryptoService(
+                "change-this-crypto-secret-with-a-long-random-value-2026");
+
+        String clave = servidor.decrypt(
+                "rugAJEWgFVqjBkViEkviey60VgOpaXjg9P1jzX2UwNAg95cddJrs/M8RgYm0REcQomy4LuQXJmQ=");
+
+        assertEquals("SEED-KEY-0001-DEMO-ABCD-EFGH", clave);
+    }
+
+    @Test
+    void decryptsLegacyKeyEncryptedWithTheCurrentSecret() throws Exception {
+        String secreto = "secreto-actual-para-claves-2026";
+        byte[] iv = new byte[12];
+        new SecureRandom().nextBytes(iv);
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(MessageDigest.getInstance("SHA-256")
+                .digest(secreto.getBytes(StandardCharsets.UTF_8)), "AES"), new GCMParameterSpec(128, iv));
+        byte[] cifrado = cipher.doFinal("CLAVE-LEGACY-ACTUAL".getBytes(StandardCharsets.UTF_8));
+        byte[] concatenado = new byte[iv.length + cifrado.length];
+        System.arraycopy(iv, 0, concatenado, 0, iv.length);
+        System.arraycopy(cifrado, 0, concatenado, iv.length, cifrado.length);
+        CryptoService servicio = new CryptoService(secreto, "secreto-antiguo");
+
+        assertEquals("CLAVE-LEGACY-ACTUAL",
+                servicio.decrypt(Base64.getEncoder().encodeToString(concatenado)));
+    }
+
+    @Test
+    void rejectsLegacyValueWithoutRoomForIv() {
+        String corto = Base64.getEncoder().encodeToString(new byte[12]);
+
+        assertEquals(400, assertThrows(ApiException.class, () -> cryptoService.decrypt(corto))
+                .getStatus().value());
     }
 }

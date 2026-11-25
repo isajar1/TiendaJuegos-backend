@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
+import com.tiendajuegos.auth.AdminUsuarioController;
 import com.tiendajuegos.catalog.CategoriaController;
 import com.tiendajuegos.catalog.CatalogDtos.JuegoRequest;
 import com.tiendajuegos.catalog.JuegoController;
@@ -36,6 +37,8 @@ class AdminAccessTest {
                 Authentication.class)));
         assertEquals("hasRole('ADMIN')", CuponController.class.getAnnotation(PreAuthorize.class).value());
         assertEquals("hasRole('ADMIN')", ReporteController.class.getAnnotation(PreAuthorize.class).value());
+        assertEquals("hasRole('ADMIN')",
+                preAuthorize(AdminUsuarioController.class.getAnnotation(PreAuthorize.class)));
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.tiendajuegos.auth;
 import com.tiendajuegos.user.Role;
 import com.tiendajuegos.user.Usuario;
 import com.tiendajuegos.user.UsuarioRepository;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
@@ -10,6 +11,7 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
@@ -32,6 +34,21 @@ public class AuthService {
     }
 
     public AuthResponse register(RegisterRequest request) {
+        return crearUsuario(request, Role.cliente);
+    }
+
+    /** Alta de administradores: solo puede hacerlo una cuenta admin ya autenticada. */
+    @Transactional
+    public AuthResponse crearAdmin(RegisterRequest request, String correoAdministrador) {
+        Usuario solicitante = usuarioRepository.findByCorreo(correoAdministrador)
+                .orElseThrow(() -> new AccessDeniedException("Administrador no encontrado"));
+        if (solicitante.getRol() != Role.admin || solicitante.isEliminado()) {
+            throw new AccessDeniedException("Solo un administrador puede crear administradores");
+        }
+        return crearUsuario(request, Role.admin);
+    }
+
+    private AuthResponse crearUsuario(RegisterRequest request, Role rol) {
         String correo = normalizeEmail(request.correo());
         if (usuarioRepository.existsByCorreo(correo)) {
             throw new EmailAlreadyRegisteredException();
@@ -41,7 +58,7 @@ public class AuthService {
                 request.nombre().trim(),
                 correo,
                 passwordEncoder.encode(request.contrasena()),
-                Role.cliente
+                rol
         );
         Usuario savedUsuario = usuarioRepository.save(usuario);
         return responseFor(savedUsuario);

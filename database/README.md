@@ -4,7 +4,7 @@
 
 `schema_v2.sql` es el esquema completo utilizado por las 22 historias de usuario: usuarios, juegos, plataformas, categorias, carrito e items, claves digitales, cupones, ordenes y detalles, resenas, lista de deseos y auditoria. Usar este script para una instalacion nueva.
 
-`seed_admin.sql` crea el usuario administrador de desarrollo (`admin` / `admin123`) con hash BCrypt. Cambiar la contrasena en cualquier entorno que no sea local.
+`seed_admin.sql` crea el usuario administrador de desarrollo (`admin@tiendajuegos.com` / `admin123`) con hash BCrypt. Es idempotente: si el correo ya existe, restablece nombre, contrasena y rol, asi que sirve tambien para recuperar el acceso. Cambiar la contrasena en cualquier entorno que no sea local. Ademas, un admin autenticado puede crear otros administradores desde el panel (`POST /api/admin/usuarios/administradores`).
 
 La eliminacion manual de cuenta anonimiza el registro en lugar de borrarlo: `usuarios` pasa a tener las columnas `eliminado` (booleano, por defecto `false`) y `fecha_eliminacion` (nula hasta que se elimina la cuenta). Con `ddl-auto=update` Hibernate las agrega automaticamente a una base existente; en una instalacion nueva se crean solas.
 

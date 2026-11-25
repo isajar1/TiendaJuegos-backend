@@ -20,6 +20,8 @@ app:
   crypto:
     # Se deriva una clave AES-256 con SHA-256; override en producción con CRYPTO_SECRET.
     secret: ${CRYPTO_SECRET:change-this-crypto-secret-with-a-long-random-value-2026}
+    # Solo lectura: claves cargadas antes del proyecto se cifraron con el secreto JWT por defecto.
+    legacy-secret: ${CRYPTO_LEGACY_SECRET:change-this-development-secret-key-to-a-long-random-value-2026}
 
 server:
   port: ${SERVER_PORT:8080}

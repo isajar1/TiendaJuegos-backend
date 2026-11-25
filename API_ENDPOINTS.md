@@ -14,6 +14,7 @@ Juego = {
 }
 Categoria = { id: number; nombre: string }
 Plataforma = { id: number; nombre: string }
+AdminCreado = { id: number; nombre: string; correo: string; rol: string }
 Cupon = { id: number; codigo: string; porcentajeDescuento: number; fechaExpiracion: string; activo: boolean }
 
 CarritoItem = { juegoId: number; titulo: string; precio: number }
@@ -38,6 +39,16 @@ ReporteCliente = { usuarioId: number; nombre: string; ordenes: number; total: nu
 | GET | `/api/health` | — | 200 `{"status":"UP"}` |
 
 `AuthResponse = {id, nombre, correo, rol, token}`. Errores: 400 validación, 401 credenciales, 409 correo duplicado.
+
+El registro público **siempre** crea clientes. El administrador de desarrollo se crea con `database/seed_admin.sql` (`admin@tiendajuegos.com` / `admin123`); el script es idempotente y restablece nombre, contraseña y rol.
+
+## Altas de administradores (admin)
+
+| Método | Ruta | Acceso | Body | Respuesta |
+|---|---|---|---|---|
+| POST | `/api/admin/usuarios/administradores` | admin | `{nombre, correo, contrasena}` | 201 `AdminCreado` (sin token) |
+
+Solo una cuenta con rol `admin` autenticada puede crear otro administrador: el controlador exige `@PreAuthorize("hasRole('ADMIN')")` y el servicio comprueba de nuevo el rol y que la cuenta no esté eliminada. Un cliente recibe **403**, un correo ya registrado **409** y datos inválidos **400**. La respuesta no devuelve el JWT del nuevo usuario: este debe iniciar sesión con su contraseña. Quién crea al admin recibe el panel con la pestaña «Usuarios».
 
 ## Cuenta del usuario autenticado
 
@@ -64,6 +75,8 @@ Eliminación manual de la cuenta: se anonimiza el registro (`Usuario eliminado`,
 | POST | `/api/plataformas` | admin | `{nombre}` | 201 `Plataforma` / 409 duplicado |
 
 Las claves se guardan cifradas con AES/GCM; nunca se devuelven en el catálogo. `GET /api/juegos/{id}/claves` está cubierto por el matcher público de `GET /api/juegos/**`, pero `@PreAuthorize("hasRole('ADMIN')")` sigue exigiendo rol admin en ejecución.
+
+Las claves cargadas antes de este proyecto están en el **formato heredado** (un único bloque base64 con `iv || ciphertext`, cifrado con el secreto JWT de desarrollo). `CryptoService.decrypt` acepta ese formato y el actual para que las claves disponibles y las ya vendidas se sigan entregando; `encrypt` siempre escribe el formato nuevo `base64(iv):base64(ciphertext)` con `CRYPTO_SECRET`. El secreto antiguo se puede indicar con `CRYPTO_LEGACY_SECRET` (por defecto, el valor de desarrollo de `JWT_SECRET`). Si una clave no se puede descifrar, la API responde 400 en lugar de entregar un texto incorrecto.
 
 ## Cupones y carrito (autenticado)
 

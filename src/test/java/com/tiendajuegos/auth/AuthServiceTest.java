@@ -3,9 +3,11 @@ package com.tiendajuegos.auth;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.tiendajuegos.TestFixtures;
 import com.tiendajuegos.user.Role;
 import com.tiendajuegos.user.Usuario;
 import com.tiendajuegos.user.UsuarioRepository;
@@ -13,9 +15,10 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -84,5 +87,44 @@ class AuthServiceTest {
 
         assertThrows(InvalidCredentialsException.class,
                 () -> authService.login(new LoginRequest("sarai@mail.com", "bad-password")));
+    }
+
+    @Test
+    void crearAdminGuardaRolAdmin() {
+        when(usuarioRepository.findByCorreo("admin@mail.com"))
+                .thenReturn(Optional.of(TestFixtures.usuario(1L, "Admin", "admin@mail.com", Role.admin)));
+        when(usuarioRepository.existsByCorreo("nuevo@mail.com")).thenReturn(false);
+        when(usuarioRepository.save(any(Usuario.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(jwtService.generateToken(any())).thenReturn("jwt-token");
+
+        AuthResponse response = authService.crearAdmin(
+                new RegisterRequest("Nuevo", "NUEVO@mail.com", "password123"), "admin@mail.com");
+
+        assertEquals("admin", response.rol());
+        ArgumentCaptor<Usuario> captor = ArgumentCaptor.forClass(Usuario.class);
+        verify(usuarioRepository).save(captor.capture());
+        assertEquals(Role.admin, captor.getValue().getRol());
+        assertEquals("nuevo@mail.com", captor.getValue().getCorreo());
+    }
+
+    @Test
+    void crearAdminRechazaACliente() {
+        when(usuarioRepository.findByCorreo("ana@mail.com"))
+                .thenReturn(Optional.of(TestFixtures.usuario(2L, "Ana", "ana@mail.com", Role.cliente)));
+
+        assertThrows(AccessDeniedException.class, () -> authService.crearAdmin(
+                new RegisterRequest("Nuevo", "nuevo@mail.com", "password123"), "ana@mail.com"));
+        verify(usuarioRepository, never()).save(any());
+    }
+
+    @Test
+    void crearAdminRechazaCorreoDuplicado() {
+        when(usuarioRepository.findByCorreo("admin@mail.com"))
+                .thenReturn(Optional.of(TestFixtures.usuario(1L, "Admin", "admin@mail.com", Role.admin)));
+        when(usuarioRepository.existsByCorreo("nuevo@mail.com")).thenReturn(true);
+
+        assertThrows(EmailAlreadyRegisteredException.class, () -> authService.crearAdmin(
+                new RegisterRequest("Nuevo", "nuevo@mail.com", "password123"), "admin@mail.com"));
+        verify(usuarioRepository, never()).save(any());
     }
 }
