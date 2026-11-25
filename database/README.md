@@ -6,6 +6,8 @@
 
 `seed_admin.sql` crea el usuario administrador de desarrollo (`admin` / `admin123`) con hash BCrypt. Cambiar la contrasena en cualquier entorno que no sea local.
 
+La eliminacion manual de cuenta anonimiza el registro en lugar de borrarlo: `usuarios` pasa a tener las columnas `eliminado` (booleano, por defecto `false`) y `fecha_eliminacion` (nula hasta que se elimina la cuenta). Con `ddl-auto=update` Hibernate las agrega automaticamente a una base existente; en una instalacion nueva se crean solas.
+
 Con Docker Compose, el script se ejecuta automaticamente al crear el volumen de MySQL por primera vez. Para reinicializar una base local de desarrollo, ejecuta desde `Infraestructura`:
 
 ```powershell

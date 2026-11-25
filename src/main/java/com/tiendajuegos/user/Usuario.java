@@ -34,6 +34,12 @@ public class Usuario {
     @Column(name = "fecha_registro", nullable = false, updatable = false)
     private Instant fechaRegistro = Instant.now();
 
+    @Column(name = "eliminado", nullable = false)
+    private boolean eliminado = false;
+
+    @Column(name = "fecha_eliminacion")
+    private Instant fechaEliminacion;
+
     protected Usuario() {
     }
 
@@ -44,9 +50,23 @@ public class Usuario {
         this.rol = rol;
     }
 
+    /**
+     * Anonimiza la cuenta sin borrar el historial: las órdenes y reseñas siguen
+     * apuntando al mismo registro, pero ya no se puede iniciar sesión con él.
+     */
+    public void anonimizar(String nuevoHash) {
+        this.nombre = "Usuario eliminado";
+        this.correo = "eliminado-" + id + "@invalid.local";
+        this.contrasenaHash = nuevoHash;
+        this.eliminado = true;
+        this.fechaEliminacion = Instant.now();
+    }
+
     public Long getId() { return id; }
     public String getNombre() { return nombre; }
     public String getCorreo() { return correo; }
     public String getContrasenaHash() { return contrasenaHash; }
     public Role getRol() { return rol; }
+    public boolean isEliminado() { return eliminado; }
+    public Instant getFechaEliminacion() { return fechaEliminacion; }
 }

@@ -39,6 +39,14 @@ ReporteCliente = { usuarioId: number; nombre: string; ordenes: number; total: nu
 
 `AuthResponse = {id, nombre, correo, rol, token}`. Errores: 400 validación, 401 credenciales, 409 correo duplicado.
 
+## Cuenta del usuario autenticado
+
+| Método | Ruta | Acceso | Respuesta |
+|---|---|---|---|
+| DELETE | `/api/usuarios/mi-cuenta` | usuario autenticado | 204 (sin cuerpo) |
+
+Eliminación manual de la cuenta: se anonimiza el registro (`Usuario eliminado`, correo `eliminado-{id}@invalid.local`, contraseña aleatoria, `eliminado=true` y `fecha_eliminacion`), se borran carrito y deseos y se registra la acción en auditoría. El inicio de sesión con la cuenta eliminada devuelve 401. Órdenes, reseñas y claves entregadas se conservan asociadas al mismo registro para no afectar los reportes. La operación es idempotente: repetirla sobre una cuenta ya eliminada devuelve 204 sin cambios.
+
 ## Catálogo, categorías y plataformas
 
 | Método | Ruta | Acceso | Body / query | Respuesta |

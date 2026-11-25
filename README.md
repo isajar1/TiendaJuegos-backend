@@ -20,6 +20,7 @@ El resto de rutas requiere `Authorization: Bearer <token>`; las de administraci�
 - Contraseñas con BCrypt y sesiones JWT stateless (`app.jwt`).
 - Claves digitales cifradas con AES/GCM: IV aleatorio de 12 bytes y formato `base64(iv):base64(ciphertext)` (`app.crypto.secret` → SHA-256). La API solo devuelve claves descifradas al comprador o al administrador.
 - Auditoría de altas, cambios, pago, entrega y reportes en `log_auditoria`.
+- La cuenta se puede eliminar desde el perfil (`DELETE /api/usuarios/mi-cuenta`). El borrado anonimiza al usuario (nombre «Usuario eliminado», correo `eliminado-{id}@invalid.local`, contraseña aleatoria y marca `eliminado`), limpia carrito y deseos, bloquea el inicio de sesión y conserva órdenes, reseñas y claves entregadas para no alterar reportes ni auditoría.
 
 ## Variables de entorno
 
@@ -48,8 +49,8 @@ Se necesita Java 21, MySQL accesible y Maven Wrapper incluido. Desde esta carpet
 ### Estado verificado
 
 - `mvn -q clean verify`: **BUILD SUCCESS**.
-- **158 tests** (0 fallos, 0 errores, 0 omitidos).
-- JaCoCo: **84,76 % de líneas** (812/958), **74,44 % de ramas** (134/180).
+- **161 tests** (0 fallos, 0 errores, 0 omitidos).
+- JaCoCo: **84,64 % de líneas** (843/996), **74,46 % de ramas** (137/184).
 - El catálogo (`GET /api/juegos`) hace **3 consultas agrupadas** en lugar de 33 (antes ~6,5 s, ahora ~1,2–1,4 s). La latencia restante es del viaje de ida y vuelta a la BD remota en Aiven (~150–200 ms por consulta), no del motor MySQL. Ver `ESTADO_ENTREGA.md`.
 
 Las pruebas E2E requieren el backend y MySQL en ejecución; no se ejecutaron en el entorno donde se generó este estado.

@@ -56,6 +56,9 @@ public class AuthService {
         }
         Usuario usuario = usuarioRepository.findByCorreo(correo)
                 .orElseThrow(InvalidCredentialsException::new);
+        if (usuario.isEliminado()) {
+            throw new InvalidCredentialsException();
+        }
         return responseFor(usuario);
     }
 
